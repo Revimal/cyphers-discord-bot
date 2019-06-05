@@ -1,5 +1,5 @@
 # Cyphers Discord Bot
-![Cyphers Discord Bot Logo](logo.pngi =640x)
+![Cyphers Discord Bot Logo](logo.png =640x)
 
 ## For Users
 [![Play Cyphers Now](https://img.shields.io/badge/play-Cyphers-Red.svg)](http://cyphers.nexon.com/cyphers/main)
