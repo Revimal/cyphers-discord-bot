@@ -5,6 +5,10 @@
 [![Play Cyphers Now](https://img.shields.io/badge/play-Cyphers-Red.svg)](http://cyphers.nexon.com/cyphers/main)
 [![Add This Bot To Your Server](https://img.shields.io/badge/Add_This_Bot_To_Your_Server-Blue.svg)](https://discordapp.com/api/oauth2/authorize?client_id=585768609893318666&permissions=67584&scope=bot)
 
+### Available Commands
+* **`!user {Username}`**
+	View Game statistics & Basic Information of a player
+
 ## For Developers
 [![Beerware License](https://img.shields.io/badge/license-Beerware-green.svg)](https://wikipedia.org/wiki/Beerware)
 [![Special Thanks To 'discord.py'](https://img.shields.io/badge/Speical_Thanks_To-discord.py-Purple.svg)](https://github.com/Rapptz/discord.py)
