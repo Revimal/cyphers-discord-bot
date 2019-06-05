@@ -1,0 +1,5 @@
+#Token files
+*.token
+
+#Python venv
+venv/
