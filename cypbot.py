@@ -122,7 +122,11 @@ class CyphersBot(discord.Client, Singleton):
                 pass
 
     async def handle_helpcmd(self, msg):
-        helpmsg = '**[도움말]**'
+        helpmsg = '**[도움말]**\n'
+        helpmsg += '**1)** 실제로 명령어를 입력할 때는 {}를 빼고 입력해주세요.\n'
+        helpmsg += '**2)** `!cyp issue 내용...`과 같이 명령어와 내용이 같은 줄에 오게 해주세요.\n'
+        helpmsg += '\n'
+        helpmsg += '**[명령어 목록]**'
         for cmdidx in list(self.handlertbl.values()):
             helpmsg += '\n'
             helpmsg += cmdidx[1]
