@@ -136,8 +136,8 @@ class CyphersBot(discord.Client, Singleton):
         try:
             limitlen = min(len(msg), 140)  
             limitmsg = '```' + msg[0:limitlen] + '```'
-            await self.get_channel(self.reprtchanid).send(limitmsg)
-            print('Someone reported an issue')
+            await self.get_channel(self.reportchanid).send(limitmsg)
+            print('Someone reported an issue %s' % limitmsg)
         except AttributeError:
             print('Invalid report channel')
         except IndexError:
