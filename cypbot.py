@@ -1,8 +1,6 @@
 import discord
-import aiohttp
-import asyncio
-import json
-from string import Formatter
+from neopleapi import NeopleAPI
+from mdbuilder import MdBuilder
 
 class Singleton:
     _instance = None
@@ -17,92 +15,9 @@ class Singleton:
         cls.instance = cls._get_instance
         return cls._instance
 
-class NeopleAPI:
-    def __init__(self, subdir):
-        with open('neople_api.token', 'r') as apikeyfile:
-            self.apikey = apikeyfile.readline().strip()
-        print('Neople APIKey is %s' % self.apikey)
-        self.baseurl = 'https://api.neople.co.kr/cy/'
-        self.subdir = subdir
-        self.template = ""
-        self.jsontoken = []
-        self.prototype = {}
-
-    def define_mdtemplate(self, filepath):
-        with open(filepath, 'r') as fmtfile:
-            self.template = fmtfile.read()
-            self.jsontoken = [fn for _, fn, _, _ in Formatter().parse(self.template) if fn is not None]
-            print('Jsontoken built %s' % self.jsontoken)
-
-    def build_requrl(self, msg, optdir):
-        if isinstance(msg, list):
-            values = msg
-        elif isinstance(msg, str):
-            values = msg.split()
-        else:
-            values = str(msg).split()
-
-        url = self.baseurl
-        url += self.subdir
-        if optdir is not None:
-            url += '/'
-            url += optdir
-            url += '/'
-        url += '?'
-
-        for idx in range(min(len(values), len(self.prototype))):
-            proto = self.prototype[idx]
-            url += proto[0]
-            url += '='
-            if proto[1] is None:
-                url += values[idx]
-            else:
-                url += proto[1]
-            url += '&'
-
-        url += 'apikey='
-        url += self.apikey
-        print('Request built %s' % url)
-        return url
-
-    async def req_apidata(self, msg, optdir=None):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.build_requrl(msg, optdir)) as response:
-                if response.status != 200:
-                    return None
-                apidata = await response.text()
-                print('Response data %s' % apidata)
-                return apidata
-
-    def access_jsondata(self, msg, rawtoken):
-        try:
-            jsonmsg = json.loads(msg)
-            tokens = rawtoken.split('/')
-            jsondata = None
-            for token in tokens:
-                if token.startswith('$'):
-                    token = int(token[1:])
-                if jsondata is None:
-                    jsondata = jsonmsg[token]
-                else:
-                    jsondata = jsondata[token]
-            return str(jsondata)
-        except TypeError:
-            return None
-        except IndexError:
-            return None
-
-    def build_resmd(self, msg):
-        parsed = {}
-        for rawtoken in self.jsontoken:
-            value = self.access_jsondata(msg, rawtoken)
-            parsed[rawtoken] = value
-        print('Parsed set %s' % str(parsed))
-        return self.template.format(**parsed)
-
 class CypUser(NeopleAPI, Singleton):
     def __init__(self):
-        super().__init__('players')
+        super().__init__('players', 'neople_api.token')
         self.prototype = {
                 0 : ['nickname', None],
                 1 : ['wordType', 'full'],
@@ -110,11 +25,38 @@ class CypUser(NeopleAPI, Singleton):
 
 class CypUserInfo(NeopleAPI, Singleton):
     def __init__(self):
-        super().__init__('players')
-        self.prototype = {}
-        self.define_mdtemplate('user.md')
+        super().__init__('players', 'neople_api.token')
+
+class CypRatingMatch(NeopleAPI, Singleton):
+    def __init__(self):
+        super().__init__('players', 'neople_api.token')
+        self.prototype = {
+                0 : ['gameTypeId', 'rating'],
+                1 : ['limit', 10]
+        }
+class CypRandomMatch(NeopleAPI, Singleton):
+    def __init__(self):
+        super().__init__('players', 'neople_api.token')
+        self.prototype = {
+                0 : ['gameTypeId', 'normal'],
+                1 : ['limit', 10]
+        }
+class UserInfoBuilder(MdBuilder, Singleton):
+    def __init__(self):
+        super().__init__('user.md')
+
+class MatchListBuilder(MdBuilder, Singleton):
+    def __init__(self):
+        super().__init__('matchlist.md')
 
 class CyphersBot(discord.Client, Singleton):
+    def __init__(self):
+        super().__init__()
+        self.handlertbl = {
+                'user' : self.handle_userinfo,
+                'match' : self.handle_matchlist,
+        }
+
     async def on_ready(self):
         print('Logged on as', self.user )
 
@@ -122,16 +64,87 @@ class CyphersBot(discord.Client, Singleton):
         if message.author == self.user:
             return
 
-        splited = message.content.split(' ')
-        if splited[0] == '!user':
-            response = '**Error Occurred**'
-            raw_userid = await CypUser.instance().req_apidata(splited[1])
-            if raw_userid is not None:
-                userid = CypUser.instance().access_jsondata(raw_userid, 'rows/$0/playerId')
-                raw_response = await CypUserInfo.instance().req_apidata(None, userid)
-                if raw_response is not None:
-                    response = CypUserInfo.instance().build_resmd(raw_response)
-            await message.channel.send(response)
+        splited = message.content.split(' ', 2)
+        if splited[0] != '!cyp':
+            return
+
+        handler = self.handlertbl[splited[1]]
+        if not callable(handler):
+            return
+
+        await message.channel.send(await handler(splited[2]))
+
+    async def handle_userinfo(self, msg):
+        rawdata = await CypUser.instance().request(msg)
+        if rawdata is None:
+            return '**API Error Occurred**'
+        userid = UserInfoBuilder.instance().parse(rawdata, 'rows/$0/playerId')
+        if userid is None:
+            return '**User Not Found**'
+        userdata = await CypUserInfo.instance().request(None, userid)
+        if userdata is None:
+            return '**API Error Occurred**'
+        userinfo = UserInfoBuilder.instance().build(userdata)
+        if userinfo is None:
+            return '**Markdown Build Failed**'
+        return userinfo
+
+    async def handle_matchlist(self, msg):
+        rawdata = await CypUser.instance().request(msg)
+        if rawdata is None:
+            return '**API Error Occurred**'
+        userid = UserInfoBuilder.instance().parse(rawdata, 'rows/$0/playerId')
+        if userid is None:
+            return '**User Not Found**'
+        userdata = await CypUserInfo.instance().request(None, userid)
+        if userdata is None:
+            return '**API Error Occurred**'
+        ratingdata = await CypRatingMatch.instance().request(None, [userid, 'matches'])
+        if ratingdata is None:
+            return '**API Error Occurred**'
+        randomdata = await CypRandomMatch.instance().request(None, [userid, 'matches'])
+        if randomdata is None:
+            return '**API Error Occurred**'
+
+        fmtstr = {}
+        ratingwin = 0
+        ratinglose = 0
+        ratinglist = MatchListBuilder.instance().parse(ratingdata, 'matches/rows', False);
+        for i in range(10):
+            try:
+                matchres = MatchListBuilder.instance().parse(ratinglist[i], 'playInfo/result')
+                if matchres == 'win':
+                    ratingwin += 1
+                    fmtstr['rating_' + str(i)] = '승'
+                else:
+                    ratinglose += 1
+                    fmtstr['rating_' + str(i)] = '패'
+            except IndexError:
+                fmtstr['rating_' + str(i)] = 'X'
+        randomwin = 0
+        randomlose = 0
+        randomlist = MatchListBuilder.instance().parse(randomdata, 'matches/rows', False) 
+        for i in range(10):
+            try:
+                matchres = MatchListBuilder.instance().parse(randomlist[i], 'playInfo/result')
+                if matchres == 'win':
+                    randomwin += 1
+                    fmtstr['random_' + str(i)] = '승'
+                else:
+                    randomlose += 1
+                    fmtstr['random_' + str(i)] = '패'
+            except IndexError:
+                fmtstr['random_' + str(i)] = 'X'
+        fmtstr['rating_win'] = ratingwin
+        fmtstr['rating_lose'] = ratinglose
+        fmtstr['random_win'] = randomwin
+        fmtstr['random_lose'] = randomlose
+        print('Fmtstr built %s' % fmtstr) 
+
+        matchlist = MatchListBuilder.instance().build(userdata, fmtstr)
+        if matchlist is None:
+            return '**Markdown Build Failed**'
+        return matchlist
 
 def main():
     with open('discord_bot.token', 'r') as botkeyfile:
