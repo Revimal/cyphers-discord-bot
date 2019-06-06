@@ -114,7 +114,7 @@ class CyphersBot(discord.Client, Singleton):
         for channel in self.get_all_channels():
             try:
                 await channel.send(msg)
-            except AttributeError:
+            except:
                 pass
 
     async def handle_helpcmd(self, msg):
