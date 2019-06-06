@@ -6,10 +6,12 @@
 [![Add This Bot To Your Server](https://img.shields.io/badge/Add_This_Bot_To_Your_Server-Blue.svg)](https://discordapp.com/api/oauth2/authorize?client_id=585768609893318666&permissions=67584&scope=bot)
 
 ### Available Commands
+* **`!cyp help`**
+	List CyphersBot Commands
 * **`!cyp user {Username}`**
-	View Game statistics & Basic Information of a player
+	View Game statistics & Basic Informations of a player
 * **`!cyp match {Username}`**
-	View Game Win/Lose History of a player
+	View Game Win/Lose Histories of a player
 
 ## For Developers
 [![Beerware License](https://img.shields.io/badge/license-Beerware-green.svg)](https://wikipedia.org/wiki/Beerware)

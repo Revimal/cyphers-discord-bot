@@ -53,8 +53,12 @@ class CyphersBot(discord.Client, Singleton):
     def __init__(self):
         super().__init__()
         self.handlertbl = {
-                'user' : self.handle_userinfo,
-                'match' : self.handle_matchlist,
+                'help' : [self.handle_helpcmd,
+                    '`!cyp help` 디스코드 봇 사용법을 출력합니다'],
+                'user' : [self.handle_userinfo,
+                    '`!cyp user {Username}` 입력한 유저의 기본 정보를 가져옵니다'],
+                'match' : [self.handle_matchlist,
+                    '`!cyp match {Username}` 입력한 유저의 최근 전적을 가져옵니다']
         }
 
     async def on_ready(self):
@@ -68,23 +72,62 @@ class CyphersBot(discord.Client, Singleton):
         if splited[0] != '!cyp':
             return
 
-        handler = self.handlertbl[splited[1]]
-        if not callable(handler):
+        try:
+            command = splited[1]
+        except IndexError:
+            command = 'help'
+        try:
+            cmdargs = splited[2]
+        except IndexError:
+            cmdargs = None
+
+        handler = self.handlertbl[command]
+        if not callable(handler[0]):
             return
 
-        await message.channel.send(await handler(splited[2]))
+        await message.channel.send(await handler[0](cmdargs))
+
+    async def handle_helpcmd(self, msg):
+        helpmsg = '**[도움말]**'
+        for cmdidx in list(self.handlertbl.values()):
+            helpmsg += '\n'
+            helpmsg += cmdidx[1]
+        return helpmsg
 
     async def handle_userinfo(self, msg):
         rawdata = await CypUser.instance().request(msg)
         if rawdata is None:
-            return '**API Error Occurred**'
+            return '**Invalid Command, `!cyp help` always be with you!**'
         userid = UserInfoBuilder.instance().parse(rawdata, 'rows/$0/playerId')
         if userid is None:
             return '**User Not Found**'
         userdata = await CypUserInfo.instance().request(None, userid)
         if userdata is None:
             return '**API Error Occurred**'
-        userinfo = UserInfoBuilder.instance().build(userdata)
+
+        rating_win = UserInfoBuilder.instance().parse(userdata, 'records/$0/winCount', False)
+        rating_lose = UserInfoBuilder.instance().parse(userdata, 'records/$0/loseCount', False)
+        rating_stop = UserInfoBuilder.instance().parse(userdata, 'records/$0/stopCount', False)
+        if rating_lose is not None and rating_stop is not None:
+            rating_lose += rating_stop
+
+        random_win = UserInfoBuilder.instance().parse(userdata, 'records/$1/winCount', False)
+        random_lose = UserInfoBuilder.instance().parse(userdata, 'records/$1/loseCount', False)
+        random_stop = UserInfoBuilder.instance().parse(userdata, 'records/$1/stopCount', False)
+        if random_lose is not None and random_stop is not None:
+            random_lose += random_stop
+
+        fmtstr = {}
+        try:
+            fmtstr['rating_winrate'] = '%0.2f' % (float(rating_win) / float(rating_win + rating_lose) * 100.0)
+        except:
+            fmtstr['rating_winrate'] = 'Unknown'
+        try:
+            fmtstr['random_winrate'] = '%0.2f' % (float(random_win) / float(random_win + random_lose) * 100.0)
+        except:
+            fmtstr['random_winrate'] = 'Unknown'
+
+        userinfo = UserInfoBuilder.instance().build(userdata, fmtstr)
         if userinfo is None:
             return '**Markdown Build Failed**'
         return userinfo
@@ -92,7 +135,7 @@ class CyphersBot(discord.Client, Singleton):
     async def handle_matchlist(self, msg):
         rawdata = await CypUser.instance().request(msg)
         if rawdata is None:
-            return '**API Error Occurred**'
+            return '**Invalid Command, `!cyp help` always be with you!**'
         userid = UserInfoBuilder.instance().parse(rawdata, 'rows/$0/playerId')
         if userid is None:
             return '**User Not Found**'
@@ -139,7 +182,6 @@ class CyphersBot(discord.Client, Singleton):
         fmtstr['rating_lose'] = ratinglose
         fmtstr['random_win'] = randomwin
         fmtstr['random_lose'] = randomlose
-        print('Fmtstr built %s' % fmtstr) 
 
         matchlist = MatchListBuilder.instance().build(userdata, fmtstr)
         if matchlist is None:

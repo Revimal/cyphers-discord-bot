@@ -1,6 +1,19 @@
 **{nickname} ({grade}급)**
-- 클랜명: {clanName}
-- 티어  : {tierName} (RP {ratingPoint}/{maxRatingPoint})
-- 전적
-	- 공식전 (승: {records/$0/winCount}, 패: {records/$0/loseCount}, 탈주: {records/$0/stopCount})
-	- 일반전 (승: {records/$1/winCount}, 패: {records/$1/loseCount}, 탈주: {records/$1/stopCount})
+**클랜:** {clanName}
+
+**[RP]**
+**티어:** {tierName}
+**현재 RP:** {ratingPoint}
+**최고 RP:** {maxRatingPoint}
+
+**[공식전 전적]**
+**승리:** {records/$0/winCount}
+**패배:** {records/$0/loseCount}
+**탈주:** {records/$0/stopCount}
+**승률:** %rating_winrate
+
+**[일반전 전적]**
+**승리:** {records/$1/winCount}
+**패배:** {records/$1/loseCount}
+**탈주:** {records/$1/stopCount}
+**승률:** %random_winrate
