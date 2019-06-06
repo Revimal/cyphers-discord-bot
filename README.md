@@ -8,6 +8,8 @@
 ### Available Commands
 * **`!cyp help`**
 	List CyphersBot Commands
+* **`!cyp issue {Message}`**
+	Report CyphersBot Issues
 * **`!cyp user {Username}`**
 	View Game statistics & Basic Informations of a player
 * **`!cyp match {Username}`**
