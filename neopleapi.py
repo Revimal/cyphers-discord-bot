@@ -22,11 +22,11 @@ class NeopleAPI:
 
         url = self.baseurl
         url += self.subpath
+        url += '/'
         if optpath is not None:
             if not isinstance(optpath, list):
                 optpath = [optpath]
             for opt in optpath:
-                url += '/'
                 url += opt
                 url += '/'
         url += '?'
