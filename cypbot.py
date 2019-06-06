@@ -104,7 +104,11 @@ class CyphersBot(discord.Client, Singleton):
         except IndexError:
             cmdargs = None
 
-        handler = self.handlertbl[command]
+        try:
+            handler = self.handlertbl[command]
+        except KeyError:
+            return
+
         if not callable(handler[0]):
             return
 
@@ -128,7 +132,8 @@ class CyphersBot(discord.Client, Singleton):
         try:
             limitlen = min(len(msg), 140)  
             limitmsg = '```' + msg[0:limitlen] + '```'
-            await self.get_channel(self.reportchanid).send(limitmsg)
+            await self.get_channel(self.reprtchanid).send(limitmsg)
+            print('Someone reported an issue')
         except AttributeError:
             print('Invalid report channel')
         except IndexError:
